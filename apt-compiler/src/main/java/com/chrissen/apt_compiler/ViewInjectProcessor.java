@@ -29,14 +29,19 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.Elements;
 
+//不要写成Process.class
 @AutoService(Processor.class)
+//设置支持的注解类型（也可以通过重写方法实现）
 @SupportedAnnotationTypes({"com.chrissen.apt_annotation.BindView"})
+//设置支持（也可以通过重写方法实现）
 @SupportedSourceVersion(SourceVersion.RELEASE_7)
 public class ViewInjectProcessor extends AbstractProcessor {
 
     private Map<String,List<VariableInfo>> classMap = new HashMap<>();
     private Map<String,TypeElement> classTypeElement = new HashMap<>();
-    private Elements mElements;
+    //工具类，用于获取Element信息
+    private Elements mUtils;
+    //生成java文件的类（生成代理工具类）
     private Filer filer;
 
 
@@ -44,14 +49,16 @@ public class ViewInjectProcessor extends AbstractProcessor {
     public synchronized void init(ProcessingEnvironment processingEnvironment) {
         super.init(processingEnvironment);
         filer = processingEnvironment.getFiler();
-        mElements = processingEnvironment.getElementUtils();
+        mUtils = processingEnvironment.getElementUtils();
     }
 
     @Override
     public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
 
+        //收集所需信息
         collectInfo(roundEnvironment);
 
+        //生成相应的代理类代码
         writeToFile();
 
         return true;
@@ -61,7 +68,6 @@ public class ViewInjectProcessor extends AbstractProcessor {
         try {
             for (String classFullName : classMap.keySet()) {
                 TypeElement typeElement = classTypeElement.get(classFullName);
-
 
                 MethodSpec.Builder constructor = MethodSpec.constructorBuilder()
                         .addModifiers(Modifier.PUBLIC)
@@ -83,8 +89,8 @@ public class ViewInjectProcessor extends AbstractProcessor {
                         .addMethod(constructor.build())
                         .build();
 
-
-                String packageFullName = mElements.getPackageOf(typeElement).getQualifiedName().toString();
+                //通过mUtils获取完整的包名
+                String packageFullName = mUtils.getPackageOf(typeElement).getQualifiedName().toString();
                 JavaFile javaFile = JavaFile.builder(packageFullName, typeSpec)
                         .build();
 
@@ -117,5 +123,20 @@ public class ViewInjectProcessor extends AbstractProcessor {
             variableInfoList.add(variableInfo);
         }
     }
+
+//    可以通过重写方法来指定支持的SourceVersion
+//    @Override
+//    public SourceVersion getSupportedSourceVersion() {
+//        return SourceVersion.RELEASE_7;
+//    }
+
+//    通过重写方法来设置支持的注解类型
+//    @Override
+//    public Set<String> getSupportedAnnotationTypes() {
+//        Set<String> set = new HashSet();
+//        set.add("com.chrissen.apt_annotation.BindView");
+//        return set;
+//    }
+
 
 }
